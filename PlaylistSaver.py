@@ -1,4 +1,5 @@
 from pytube import YouTube,Playlist
+import time
 import os
 import logging
 import sys
@@ -29,8 +30,10 @@ def download_video(yt, output_path):
         video = yt.streams.get_highest_resolution()
         video.download(output_path)
         display_message("Video downloaded successfully.")
+        return True
     except Exception as e:
         display_message(f"Error downloading video: {e}")
+        return False
 
 
 
@@ -45,6 +48,7 @@ def process_yt_video(video_url, output_path):
 
 
 def download_yt_playlist(playlist_url, output_path):
+    display_message(f"\nProcessing playlist from URL: {playlist_url}")
     try:
         playlist = Playlist(playlist_url)
         playlist_name = playlist.title
@@ -57,7 +61,6 @@ def download_yt_playlist(playlist_url, output_path):
         else:
             average_length = "N/A"
         
-        display_message(f"\nProcessing playlist from URL: {playlist_url}")
         display_message(f'Playlist Name: {playlist_name}')
         display_message(f'Number of Videos: {playlist_length}')
         display_message(f'Playlist Duration: {playlist_duration}')
@@ -70,11 +73,23 @@ def download_yt_playlist(playlist_url, output_path):
         else:
             display_message(f"Folder already exists at {playlist_folder}")
 
+        unsuccessful_videos = []
         for video in playlist.videos:
             try:
-                download_video(video, playlist_folder)
+                if (not download_video(video, playlist_folder)):
+                    unsuccessful_videos.append(video)
             except Exception as e:
                 display_message(f"Error processing video: {e}")
+
+        if len(unsuccessful_videos) > 0:
+            display_message(f"Unsuccessful downloads: {len(unsuccessful_videos)}")
+            display_message(f"Retrying unsuccessful downloads...")
+            for video in unsuccessful_videos:
+                time.sleep(3)
+                try:
+                    download_video(video, playlist_folder)
+                except Exception as e:
+                    display_message(f"Error processing video: {e}")
     except Exception as e:
         display_message(f'Error fetching playlist details: {str(e)}')
         return False
